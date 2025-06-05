@@ -26,6 +26,9 @@ export default function Layout({ children }) {
           <ListItemButton onClick={() => nav('/invoices')}>
             <ListItemText primary="Invoices" />
           </ListItemButton>
+          <ListItemButton onClick={() => nav('/search')}>
+            <ListItemText primary="Search"/>
+          </ListItemButton>
         </List>
       </Drawer>
 

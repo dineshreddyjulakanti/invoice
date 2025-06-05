@@ -111,3 +111,4 @@ def delete_invoice(inv_id):
         return jsonify({"message": "Deleted"})
     except DoesNotExist:
         return jsonify({"message": "Not found"}), 404
+    

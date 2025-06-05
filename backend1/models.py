@@ -28,4 +28,4 @@ class Invoice(Document):
     totalAmount    = fields.FloatField(required=True)
 
     createdAt      = fields.DateTimeField(auto_now_add=True)
-    updatedAt      = fields.DateTimeField(auto_now=True)
+    updatedAt      = fields.DateTimeField(auto_now=True)    

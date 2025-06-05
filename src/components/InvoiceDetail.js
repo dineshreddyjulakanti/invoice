@@ -1,5 +1,5 @@
 /* ---------- imports (all at top) ---------- */
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -19,7 +19,9 @@ import {
   TableHead,
   TableRow,
   TableCell,
-  TableBody
+  TableBody,
+  Alert,
+  Snackbar
 } from '@mui/material';
 import { Add, Delete } from '@mui/icons-material';
 
@@ -71,6 +73,9 @@ const schema = yup
 export default function InvoiceDetail({ mode }) {
   const { id } = useParams();
   const nav = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [showError, setShowError] = useState(false);
 
   const { control, handleSubmit, reset, watch } = useForm({
     resolver: yupResolver(schema),
@@ -99,41 +104,75 @@ export default function InvoiceDetail({ mode }) {
 
   /* load existing invoice */
   useEffect(() => {
-    if (mode === 'update') {
-      getInvoice(id).then(({ data }) =>
-        reset({
-          ...data,
-          date: dayjs(data.date).format('YYYY-MM-DD')
+    if (mode === 'update' && id) {
+      setLoading(true);
+      getInvoice(id)
+        .then(({ data }) => {
+          console.log('Loaded invoice data:', data);
+          reset({
+            ...data,
+            date: dayjs(data.date).format('YYYY-MM-DD')
+          });
         })
-      );
+        .catch(err => {
+          console.error('Failed to load invoice:', err);
+          setError('Failed to load invoice: ' + (err.response?.data?.message || err.message));
+          setShowError(true);
+        })
+        .finally(() => setLoading(false));
     }
   }, [id, mode, reset]);
 
   /* submit handler */
   const onSubmit = async d => {
-    const itemsWithAmt = d.items.map(i => ({
-      ...i,
-      amount: i.quantity * i.price
-    }));
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const itemsWithAmt = d.items.map(i => ({
+        ...i,
+        amount: i.quantity * i.price
+      }));
 
-    const total =
-      itemsWithAmt.reduce((t, i) => t + i.amount, 0) +
-      d.billSundrys.reduce((t, b) => t + (+b.amount || 0), 0);
+      const total =
+        itemsWithAmt.reduce((t, i) => t + i.amount, 0) +
+        d.billSundrys.reduce((t, b) => t + (+b.amount || 0), 0);
 
-    const payload = { ...d, items: itemsWithAmt, totalAmount: total };
-
-    if (mode === 'create') {
-      await createInvoice(payload);
-    } else {
-      await updateInvoice(id, payload);
+      const payload = { ...d, items: itemsWithAmt, totalAmount: total };
+      
+      console.log('Submitting data:', payload);
+      
+      if (mode === 'create') {
+        await createInvoice(payload);
+        console.log('Invoice created successfully');
+      } else {
+        console.log(`Updating invoice ${id} with:`, payload);
+        await updateInvoice(id, payload);
+        console.log('Invoice updated successfully');
+      }
+      nav('/invoices');
+    } catch (err) {
+      console.error('Failed to save invoice:', err);
+      setError(err.response?.data?.errors || err.response?.data?.message || 'Failed to save invoice');
+      setShowError(true);
+    } finally {
+      setLoading(false);
     }
-    nav('/invoices');
   };
 
   /* delete handler */
   const remove = async () => {
-    await deleteInvoice(id);
-    nav('/invoices');
+    try {
+      setLoading(true);
+      await deleteInvoice(id);
+      nav('/invoices');
+    } catch (err) {
+      console.error('Failed to delete invoice:', err);
+      setError('Failed to delete invoice: ' + (err.response?.data?.message || err.message));
+      setShowError(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   /* live total for UI */
@@ -145,6 +184,17 @@ export default function InvoiceDetail({ mode }) {
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <Stack spacing={3}>
+        {/* Error message */}
+        <Snackbar 
+          open={showError} 
+          autoHideDuration={6000} 
+          onClose={() => setShowError(false)}
+        >
+          <Alert severity="error" onClose={() => setShowError(false)}>
+            {Array.isArray(error) ? error.join(', ') : error}
+          </Alert>
+        </Snackbar>
+        
         <Typography variant="h6">
           {mode === 'create' ? 'Create Invoice' : 'Edit Invoice'}
         </Typography>
@@ -279,12 +329,12 @@ export default function InvoiceDetail({ mode }) {
             Cancel
           </Button>
           {mode === 'update' && (
-            <Button color="error" onClick={remove}>
+            <Button color="error" onClick={remove} disabled={loading}>
               Delete
             </Button>
           )}
-          <Button variant="contained" type="submit">
-            Save
+          <Button variant="contained" type="submit" disabled={loading}>
+            {loading ? 'Saving...' : 'Save'}
           </Button>
         </Stack>
       </Stack>

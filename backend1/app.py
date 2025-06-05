@@ -36,7 +36,6 @@ def create_app():
     def server_error(e):
         app.logger.exception(e)
         return jsonify({"message": "Server error"}), 500
-
     return app
 
 if __name__ == "__main__":

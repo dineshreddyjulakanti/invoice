@@ -3,7 +3,6 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import InvoiceList from './components/InvoiceList';
 import InvoiceDetail from './components/InvoiceDetail';
-
 function App() {
   return (
     <Layout>
